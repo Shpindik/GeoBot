@@ -1,6 +1,6 @@
 from frozendict import frozendict
 
 TEXT_DICT = frozendict({
-    'greet': 'Привет, {name}! Я бот.',
+    'greet': 'Привет, {name}! НУ и нахуй ты сюда пришел.',
 
 })
