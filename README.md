@@ -1,1 +1,2 @@
 # GeoBot
+TgBot for Geo
