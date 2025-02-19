@@ -4,11 +4,11 @@ import sys
 import logging
 import signal
 
-from aiogram import Bot, Dispatcher, Router
+from aiogram import Bot, Dispatcher
 from dotenv import load_dotenv
 
-from manage import register_handlers
-
+from handlers import router
+from database import setup_database
 
 load_dotenv()
 
@@ -28,15 +28,15 @@ def check_tokens():
     return not missing_tokens
 
 
-router = Router()
 bot = Bot(token=TELEGRAM_TOKEN)
 dp = Dispatcher()
 dp.include_router(router)
 
 
 async def main():
-    register_handlers(dp)
     print('Бот запущен. Для остановки нажмите Ctrl+C.')
+
+    setup_database()
     await bot.delete_webhook(drop_pending_updates=True)
     polling_task = asyncio.create_task(
         dp.start_polling(
@@ -47,8 +47,10 @@ async def main():
 
     def shutdown():
         polling_task.cancel()
+
     for sig in (signal.SIGINT, signal.SIGTERM):
         asyncio.get_event_loop().add_signal_handler(sig, shutdown)
+
     try:
         await polling_task
     except asyncio.CancelledError:
