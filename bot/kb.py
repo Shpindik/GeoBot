@@ -64,7 +64,7 @@ choosing_task = InlineKeyboardMarkup(
     inline_keyboard=[
         [
             InlineKeyboardButton(
-                text=task, callback_data=f'handle_task_{task}'
+                text=task, callback_data=f'handle_task_{task}_cd'
             ) for task in dict['tasks'][i:i+4]
         ] for i in range(0, len(dict['tasks']), 4)
     ]
@@ -74,7 +74,37 @@ back_to_task = InlineKeyboardMarkup(
     inline_keyboard=[
         [
             InlineKeyboardButton(
-                text=dict['back_task'], callback_data='back_to_task_cd'
+                text=dict['into_task_2'], callback_data='into_task_2_cd'
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=dict['back_task_list'], callback_data='back_to_task_cd'
+            )
+        ]
+    ]
+)
+
+back_task_2 = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text=dict['back_task_2'], callback_data='handle_task_2_cd'
+            )
+        ]
+    ]
+)
+
+task_2_done = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text=dict['back_task_2'], callback_data='handle_task_2_cd'
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=dict['back_task_list'], callback_data='back_to_task_cd'
             )
         ]
     ]
