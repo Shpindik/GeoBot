@@ -1,24 +1,20 @@
-import re
 import os
+import re
 from functools import wraps
-from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery, ContentType, FSInputFile
-from aiogram.fsm.context import FSMContext
 
 import kb
+from aiogram import F, Router
+from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery, ContentType, FSInputFile, Message
 from const import USERS_PER_PAGE
-from database import (save_user_data,
-                      get_user_ids,
-                      get_users_paginated,
-                      get_user_full_name,
-                      export_users_to_excel
-                      )
+from database import (export_users_to_excel, get_user_full_name, get_user_ids,
+                      get_users_paginated, save_user_data)
 from dict import ADMIN_DICT as admin_dict
 from dict import TASK_DICT as dict_task
 from dict import TEXT_DICT as dict
-from dotenv import load_dotenv, dotenv_values
-from handler_answers import handle_task_answer, handle_task
-from states import AdminState, UserState, TaskState, FeedbackStates
+from dotenv import dotenv_values, load_dotenv
+from handler_answers import handle_task, handle_task_answer
+from states import AdminState, FeedbackStates, TaskState, UserState
 
 load_dotenv()
 
@@ -126,7 +122,7 @@ async def delete_admin_handler(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith('delete_admin_'))
 async def confirm_delete_admin(callback: CallbackQuery):
-    admin_id_to_delete = callback.data.split("_")[-1]
+    admin_id_to_delete = callback.data.split('_')[-1]
     await callback.message.edit_text(
         admin_dict['admin_confirm'].format(
             admin_id_to_delete=admin_id_to_delete
@@ -137,7 +133,7 @@ async def confirm_delete_admin(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith('confirm_delete_'))
 async def execute_delete_admin(callback: CallbackQuery):
-    admin_id_to_delete = callback.data.split("_")[-1]
+    admin_id_to_delete = callback.data.split('_')[-1]
     if admin_id_to_delete in ADMIN_TOKEN:
         if len(ADMIN_TOKEN) > 2:
             try:
@@ -172,7 +168,7 @@ async def execute_delete_admin(callback: CallbackQuery):
             )
 
 
-@router.callback_query(F.data == 'cancel_delete')
+@router.callback_query(F.data == 'cancel_delete_cd')
 async def cancel_delete(callback: CallbackQuery):
     await callback.message.edit_text(
         admin_dict['admin_accept'],
@@ -249,7 +245,7 @@ async def handle_back_to_admin(callback: CallbackQuery):
     )
 
 
-@router.callback_query(F.data == 'ask_admin')
+@router.callback_query(F.data == 'ask_admin_cd')
 async def ask_admin_handler(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer(
         admin_dict['admin_user_message'],
@@ -288,7 +284,7 @@ async def forward_to_admin(message: Message, state: FSMContext):
 
 @router.callback_query(F.data.startswith('reply_to_'))
 async def start_admin_reply(callback: CallbackQuery, state: FSMContext):
-    user_id = callback.data.split("_")[-1]
+    user_id = callback.data.split('_')[-1]
     full_name = await get_user_full_name(user_id)
     await state.update_data(target_user_id=user_id)
     await callback.message.answer(
@@ -308,14 +304,20 @@ async def send_admin_reply(message: Message, state: FSMContext):
             user_id,
             f'{admin_dict['admin_bot_reply']}\n\n{message.text}'
         )
-        await message.answer(admin_dict['admin_answer_succes'])
+        await message.answer(admin_dict['admin_answer_success'])
     except Exception as e:
         await message.answer(f'{admin_dict['admin_alert']}{str(e)}')
 
     await state.clear()
 
 
-@router.callback_query(F.data == 'cancel_feedback')
+@router.callback_query(F.data == 'cancel_reply_cd')
+async def cancel_reply(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.message.delete()
+
+
+@router.callback_query(F.data == 'cancel_feedback_cd')
 async def cancel_feedback(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.message.delete()
@@ -477,7 +479,7 @@ async def handle_name_input(message: Message, state: FSMContext):
                 message_id=msg_id
             )
         except Exception as e:
-            print(f"Ошибка при удалении сообщения: {e}")
+            print(f'Ошибка при удалении сообщения: {e}')
 
     data = await state.get_data()
     class_name = data.get('class_name')
@@ -505,14 +507,14 @@ async def handle_accept_user_data(callback: CallbackQuery, state: FSMContext):
     full_name = data.get('full_name')
     user_id = callback.from_user.id
 
-    for msg_id in data.get("messages_to_delete", []):
+    for msg_id in data.get('messages_to_delete', []):
         try:
             await callback.message.bot.delete_message(
                 chat_id=callback.message.chat.id,
                 message_id=msg_id
             )
         except Exception as e:
-            print(f"Ошибка при удалении сообщения: {e}")
+            print(f'Ошибка при удалении сообщения: {e}')
 
     await save_user_data(user_id, class_name, full_name)
 

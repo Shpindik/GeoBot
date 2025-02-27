@@ -1,13 +1,12 @@
-from aiogram import Router
-from aiogram.types import CallbackQuery, Message
-from aiogram.fsm.context import FSMContext
 from typing import Optional
 
+from aiogram import Router
+from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery, Message
 from database import update_completed_tasks
-from dict import TEXT_DICT as dict
 from dict import CORRECT_ANSWERS as correct_answers
+from dict import TEXT_DICT as dict
 from states import TaskState
-
 
 router = Router()
 
@@ -22,15 +21,15 @@ async def handle_task(
     video_link: Optional[str] = None
 ):
     """
-    Универсальная функция для обработки заданий.
+    Universal function for handling tasks.
 
-    :param callback: CallbackQuery от пользователя.
-    :param state: FSMContext для управления состоянием.
-    :param task_text: Текст задания.
-    :param reply_markup: Клавиатура для задания.
-    :param next_state: Следующее состояние (если есть).
-    :param parse_mode: Режим разметки (например, 'HTML').
-    :param video_link: Ссылка на видео (если есть).
+    :param callback: CallbackQuery from user.
+    :param state: FSMContext for control state.
+    :param task_text: Text for task.
+    :param reply_markup: Keyboard for task.
+    :param next_state: Next state(if exist).
+    :param parse_mode: Parse mode(if exist).
+    :param video_link: Video link(if exist).
     """
     if next_state:
         await state.set_state(next_state)
@@ -75,7 +74,7 @@ async def handle_task_answer(
                     message_id=msg_id
                 )
             except Exception as e:
-                print(f"Ошибка удаления сообщения {msg_id}: {e}")
+                print(f'Ошибка удаления сообщения {msg_id}: {e}')
 
         await message.delete()
         if last_message_id:
@@ -83,13 +82,13 @@ async def handle_task_answer(
                 await message.bot.edit_message_text(
                     chat_id=message.chat.id,
                     message_id=last_message_id,
-                    text=f"{dict['correct_msg']}\n{next_task_text}",
+                    text=f'{dict['correct_msg']}\n{next_task_text}',
                     parse_mode=parse_mode,
                     reply_markup=reply_markup
                 )
             except Exception as e:
-                print(f"Ошибка редактирования сообщения \
-                      {last_message_id}: {e}")
+                print(f'Ошибка редактирования сообщения \
+                      {last_message_id}: {e}')
 
         if final_step:
             user_id = message.from_user.id

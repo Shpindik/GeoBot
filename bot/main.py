@@ -1,14 +1,13 @@
 import asyncio
-import os
-import sys
 import logging
+import os
 import signal
+import sys
 
 from aiogram import Bot, Dispatcher
-from dotenv import load_dotenv
-
-from handlers import router
 from database import setup_database
+from dotenv import load_dotenv
+from handlers import router
 
 load_dotenv()
 
@@ -16,7 +15,7 @@ TELEGRAM_TOKEN = os.getenv('TOKEN')
 
 
 def check_tokens():
-    """Проверяет доступность переменных окружения."""
+    """ Check if all required environment variables are set """
     missing_tokens = [
         name for name, value in {
             'TOKEN': TELEGRAM_TOKEN,

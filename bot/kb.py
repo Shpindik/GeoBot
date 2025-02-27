@@ -1,8 +1,6 @@
-from aiogram.types import InlineKeyboardButton,  InlineKeyboardMarkup
-
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from dict import ADMIN_DICT as admin_dict
 from dict import TEXT_DICT as dict
-
 
 """ Admin panel keyboard """
 
@@ -56,7 +54,7 @@ def get_delete_admin_keyboard(admins_to_show):
             [
                 InlineKeyboardButton(
                     text=admin_dict['admin_close'],
-                    callback_data='cancel_delete'
+                    callback_data='cancel_delete_cd'
                 )
             ]
         ]
@@ -69,11 +67,11 @@ def get_confirm_delete_keyboard(admin_id_to_delete):
             [
                 InlineKeyboardButton(
                     text=admin_dict['admin_ok'],
-                    callback_data=f"confirm_delete_{admin_id_to_delete}"
+                    callback_data=f'confirm_delete_{admin_id_to_delete}'
                 ),
                 InlineKeyboardButton(
                     text=admin_dict['admin_close'],
-                    callback_data="cancel_delete"
+                    callback_data='cancel_delete_cd'
                 )
             ]
         ]
@@ -104,7 +102,7 @@ admin_reply_to_admin = InlineKeyboardMarkup(
         [
             InlineKeyboardButton(
                 text=admin_dict['admin_close'],
-                callback_data='cancel_feedback'
+                callback_data='cancel_feedback_cd'
             )
         ]
     ]
@@ -112,13 +110,12 @@ admin_reply_to_admin = InlineKeyboardMarkup(
 
 
 def get_reply_keyboard(user_id: int) -> InlineKeyboardMarkup:
-    """Keyboard for replying to a user"""
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
                     text=admin_dict['admin_answer'],
-                    callback_data=f"reply_to_{user_id}"
+                    callback_data=f'reply_to_{user_id}'
                 )
             ]
         ]
@@ -130,7 +127,7 @@ reply_admin_markup = InlineKeyboardMarkup(
             [
                 InlineKeyboardButton(
                     text=admin_dict['admin_close'],
-                    allback_data="cancel_reply"
+                    callback_data='cancel_reply_cd'
                 )
             ]
         ]
@@ -163,7 +160,7 @@ main_menu = InlineKeyboardMarkup(
         ],
         [
             InlineKeyboardButton(
-                text='спросить админа', callback_data='ask_admin')
+                text='спросить админа', callback_data='ask_admin_cd')
         ]
     ]
 )
