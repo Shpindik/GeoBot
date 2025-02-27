@@ -251,6 +251,8 @@ def create_task_done_keyboard(task_callback_data: str) -> InlineKeyboardMarkup:
 
 task_2_done = create_task_done_keyboard(task_callback_data='handle_task_2_cd')
 task_3_done = create_task_done_keyboard(task_callback_data='handle_task_3_cd')
+task_5_done = create_task_done_keyboard(task_callback_data='handle_task_5_cd')
+task_6_done = create_task_done_keyboard(task_callback_data='handle_task_6_cd')
 
 
 def create_back_task_keyboard(task_number: int) -> InlineKeyboardMarkup:
@@ -268,6 +270,8 @@ def create_back_task_keyboard(task_number: int) -> InlineKeyboardMarkup:
 
 back_task_2 = create_back_task_keyboard(task_number=2)
 back_task_3 = create_back_task_keyboard(task_number=3)
+back_task_5 = create_back_task_keyboard(task_number=5)
+back_task_6 = create_back_task_keyboard(task_number=6)
 
 
 def create_back_to_task_keyboard(task_number: int) -> InlineKeyboardMarkup:
@@ -291,3 +295,5 @@ def create_back_to_task_keyboard(task_number: int) -> InlineKeyboardMarkup:
 
 back_to_task_2 = create_back_to_task_keyboard(task_number=2)
 back_to_task_3 = create_back_to_task_keyboard(task_number=3)
+back_to_task_5 = create_back_to_task_keyboard(task_number=5)
+back_to_task_6 = create_back_to_task_keyboard(task_number=6)

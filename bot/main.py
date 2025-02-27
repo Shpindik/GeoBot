@@ -13,6 +13,11 @@ load_dotenv()
 
 TELEGRAM_TOKEN = os.getenv('TOKEN')
 
+LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")
+LOG_FILE = os.path.join(LOG_DIR, "bot_errors.log")
+
+os.makedirs(LOG_DIR, exist_ok=True)
+
 
 def check_tokens():
     """ Check if all required environment variables are set """
@@ -59,6 +64,9 @@ if __name__ == '__main__':
     logging.basicConfig(
         level=logging.DEBUG,
         format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[logging.StreamHandler(sys.stdout)]
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+            logging.FileHandler(LOG_FILE, encoding='utf-8')
+        ]
     )
     asyncio.run(main())

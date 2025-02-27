@@ -134,8 +134,12 @@ dmypy.json
 cython_debug/
 
 # Databases
-.db
+*.db
 
 # Excel files
-.xls
-.xlsx
+*.xls
+*.xlsx
+
+# Logs
+logs/
+*.log

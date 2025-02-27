@@ -11,6 +11,7 @@ from database import (export_users_to_excel, get_user_full_name, get_user_ids,
 from dict import ADMIN_DICT as admin_dict
 from dict import TASK_DICT as dict_task
 from dict import TEXT_DICT as dict
+from dict import VIDEO_LINKS as video_dict
 from dotenv import dotenv_values, load_dotenv
 from handler_answers import handle_task, handle_task_answer
 from states import AdminState, FeedbackStates, TaskState, UserState
@@ -184,10 +185,11 @@ async def show_users_page(callback: CallbackQuery, state: FSMContext):
     users = await get_users()
 
     if not users:
-        await callback.message.edit_text(
-            admin_dict['admin_empty_users'],
-            reply_markup=kb.admin_keyboard
-        )
+        if callback.message.text != admin_dict['admin_empty_users']:
+            await callback.message.edit_text(
+                admin_dict['admin_empty_users'],
+                reply_markup=kb.admin_keyboard
+            )
         return
 
     response = f'{admin_dict['admin_view_users']}\n\n'
@@ -273,7 +275,7 @@ async def forward_to_admin(message: Message, state: FSMContext):
         if user_message_id:
             await message.bot.delete_message(message.chat.id, user_message_id)
     except Exception as e:
-        print(f"Ошибка при удалении сообщений: {e}")
+        print(f'Ошибка при удалении сообщений: {e}')
 
     await message.answer(
         admin_dict['admin_answer_success'],
@@ -304,14 +306,14 @@ async def send_admin_reply(message: Message, state: FSMContext):
     full_name = await get_user_full_name(user_id)
 
     caption_text = (
-        f"{admin_dict['admin_bot_reply']}\n\n{message.caption or ''}"
+        f'{admin_dict['admin_bot_reply']}\n\n{message.caption or ''}'
     ).strip()
 
     try:
         if message.text:
             await message.bot.send_message(
                 user_id,
-                f"{admin_dict['admin_bot_reply']}\n\n{message.text}"
+                f'{admin_dict['admin_bot_reply']}\n\n{message.text}'
             )
         elif message.photo:
             await message.bot.send_photo(
@@ -347,10 +349,10 @@ async def send_admin_reply(message: Message, state: FSMContext):
             )
 
         await message.answer(
-            f"{admin_dict['admin_answer_success_to_user']} {full_name}"
+            f'{admin_dict['admin_answer_success_to_user']} {full_name}'
         )
     except Exception as e:
-        await message.answer(f"{admin_dict['admin_alert']}{str(e)}")
+        await message.answer(f'{admin_dict['admin_alert']}{str(e)}')
 
     await state.clear()
 
@@ -608,11 +610,12 @@ async def handle_back_to_task(callback: CallbackQuery):
 @router.callback_query(F.data == 'handle_task_2_cd')
 @check_old_answer('handle_task_2_cd')
 async def handle_task_2(callback: CallbackQuery):
-    video_link = 'https://rutube.ru/video/f8cdfddf0fa59963d92fde841bfde0fb/'
+    await callback.message.delete()
+    video_link = video_dict['video_2']
     await handle_task(
         callback=callback,
         state=None,
-        task_text=dict_task['video_task_2'],
+        task_text=dict_task['video_task'],
         reply_markup=kb.back_to_task_2,
         video_link=video_link
     )
@@ -620,6 +623,7 @@ async def handle_task_2(callback: CallbackQuery):
 
 @router.callback_query(F.data == 'into_task_2_cd')
 async def into_task_2(callback: CallbackQuery, state: FSMContext):
+    await callback.message.delete()
     await handle_task(
         callback=callback,
         state=state,
@@ -694,6 +698,7 @@ async def handle_task_2_5_answer(message: Message, state: FSMContext):
 @router.callback_query(F.data == 'handle_task_3_cd')
 @check_old_answer('handle_task_3_cd')
 async def handle_task_3(callback: CallbackQuery):
+    await callback.message.delete()
     await handle_task(
         callback=callback,
         state=None,
@@ -705,6 +710,7 @@ async def handle_task_3(callback: CallbackQuery):
 
 @router.callback_query(F.data == 'into_task_3_cd')
 async def into_task_3(callback: CallbackQuery, state: FSMContext):
+    await callback.message.delete()
     await handle_task(
         callback=callback,
         state=state,
@@ -778,4 +784,103 @@ async def handle_task_3_5_answer(message: Message, state: FSMContext):
         reply_markup=kb.task_3_done,
         final_step=True,
         task_number=3
+    )
+
+
+@router.callback_query(F.data == 'handle_task_5_cd')
+@check_old_answer('handle_task_5_cd')
+async def handle_task_5(callback: CallbackQuery):
+    await callback.message.delete()
+    video_link = video_dict['video_5']
+    await handle_task(
+        callback=callback,
+        state=None,
+        task_text=dict_task['video_task'],
+        reply_markup=kb.back_to_task_5,
+        parse_mode='HTML',
+        video_link=video_link
+    )
+
+
+@router.callback_query(F.data == 'into_task_5_cd')
+async def into_task_5(callback: CallbackQuery, state: FSMContext):
+    await callback.message.delete()
+    await handle_task(
+        callback=callback,
+        state=state,
+        task_text=dict_task['task_5_1'],
+        reply_markup=kb.back_task_5,
+        next_state=TaskState.waiting_for_task_5_1_answer,
+        parse_mode='HTML',
+        image_filename='image_5_1.jpg'
+    )
+
+
+@router.message(TaskState.waiting_for_task_5_1_answer)
+async def handle_task_5_1_answer(message: Message, state: FSMContext):
+    await handle_task_answer(
+        message=message,
+        state=state,
+        correct_answers_key='correct_answer_5_1',
+        next_task_text=dict_task['task_5_2'],
+        parse_mode='HTML',
+        reply_markup=kb.back_task_5,
+        next_state=TaskState.waiting_for_task_5_2_answer,
+        image_filename='image_5_2.jpg'
+    )
+
+
+@router.message(TaskState.waiting_for_task_5_2_answer)
+async def handle_task_5_2_answer(message: Message, state: FSMContext):
+    await handle_task_answer(
+        message=message,
+        state=state,
+        correct_answers_key='correct_answer_5_2',
+        next_task_text=dict_task['task_5_3'],
+        parse_mode='HTML',
+        reply_markup=kb.back_task_5,
+        next_state=TaskState.waiting_for_task_5_3_answer,
+        image_filename='image_5_3.jpg'
+    )
+
+
+@router.message(TaskState.waiting_for_task_5_3_answer)
+async def handle_task_5_3_answer(message: Message, state: FSMContext):
+    await handle_task_answer(
+        message=message,
+        state=state,
+        correct_answers_key='correct_answer_5_3',
+        next_task_text=dict_task['task_5_4'],
+        parse_mode='HTML',
+        reply_markup=kb.back_task_5,
+        next_state=TaskState.waiting_for_task_5_4_answer,
+        image_filename='image_5_4.jpg'
+    )
+
+
+@router.message(TaskState.waiting_for_task_5_4_answer)
+async def handle_task_5_4_answer(message: Message, state: FSMContext):
+    await handle_task_answer(
+        message=message,
+        state=state,
+        correct_answers_key='correct_answer_5_4',
+        next_task_text=dict_task['task_5_5'],
+        parse_mode='HTML',
+        reply_markup=kb.back_task_5,
+        next_state=TaskState.waiting_for_task_5_5_answer,
+        image_filename='image_5_5.jpg'
+    )
+
+
+@router.message(TaskState.waiting_for_task_5_5_answer)
+async def handle_task_5_5_answer(message: Message, state: FSMContext):
+    await handle_task_answer(
+        message=message,
+        state=state,
+        correct_answers_key='correct_answer_5_5',
+        next_task_text='',
+        next_state=None,
+        reply_markup=kb.task_5_done,
+        final_step=True,
+        task_number=5
     )
