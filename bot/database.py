@@ -1,10 +1,11 @@
 import sqlite3
+import openpyxl
 
 DB_PATH = 'users.db'
 
 
 def setup_database():
-    """Создание таблицы, если её нет"""
+    """ Create table if not exists """
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute('''
@@ -24,7 +25,7 @@ async def save_user_data(
         user_id: int,
         class_name: str,
         full_name: str) -> bool:
-    """Сохранение данных в БД с проверкой дублей"""
+    """ Save user data to database """
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute('''
@@ -57,12 +58,12 @@ async def update_completed_tasks(user_id: int, task_number: int):
 
         if result:
             current_tasks = result[0] or ""
-            tasks_list = current_tasks.split(',') if current_tasks else []
+            tasks_list = current_tasks.split(', ') if current_tasks else []
 
             try:
                 task_number = int(task_number)
             except ValueError:
-                raise ValueError("Номер задания должен быть целым числом")
+                raise ValueError('Номер задания должен быть целым числом')
 
             if str(task_number) not in tasks_list:
 
@@ -76,3 +77,61 @@ async def update_completed_tasks(user_id: int, task_number: int):
                     WHERE user_id = ?
                 ''', (updated_tasks, user_id))
                 conn.commit()
+
+
+async def get_users_paginated(limit: int, offset: int):
+    """ Get users from database """
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT user_id, class_name, full_name, completed_tasks
+            FROM users
+            LIMIT ? OFFSET ?
+        ''', (limit, offset))
+        return cursor.fetchall()
+
+
+async def export_users_to_excel():
+    """ Export users data to Excel file """
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT user_id, class_name, full_name, completed_tasks
+            FROM users
+        ''')
+        users = cursor.fetchall()
+
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = 'Пользователи'
+
+    sheet.append(['ID', 'Класс', 'Имя', 'Выполненные задания'])
+
+    for user in users:
+        user_id, class_name, full_name, completed_tasks = user
+        sheet.append([user_id, class_name, full_name, completed_tasks])
+
+    file_path = 'users_export.xlsx'
+    workbook.save(file_path)
+    return file_path
+
+
+async def get_user_full_name(user_id: int) -> str:
+    """ Get user full name from database """
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT full_name FROM users WHERE user_id = ?
+        ''', (user_id,))
+        result = cursor.fetchone()
+        return result[0] if result else None
+
+
+async def get_user_ids():
+    """ Get user IDs from database """
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT user_id FROM users
+        ''')
+        return [row[0] for row in cursor.fetchall()]

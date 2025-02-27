@@ -1,32 +1,32 @@
 import re
+import os
 from functools import wraps
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
-from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import Message, CallbackQuery, ContentType, FSInputFile
 from aiogram.fsm.context import FSMContext
 
 import kb
-from database import save_user_data, update_completed_tasks
+from const import USERS_PER_PAGE
+from database import (save_user_data,
+                      get_user_ids,
+                      get_users_paginated,
+                      get_user_full_name,
+                      export_users_to_excel
+                      )
+from dict import ADMIN_DICT as admin_dict
+from dict import TASK_DICT as dict_task
 from dict import TEXT_DICT as dict
-from dict import CORRECT_ANSWERS as correct_answers
+from dotenv import load_dotenv, dotenv_values
+from handler_answers import handle_task_answer, handle_task
+from states import AdminState, UserState, TaskState, FeedbackStates
 
+load_dotenv()
 
 NAME_REGEX = re.compile(r'^[А-Яа-яЁёA-Za-z]+ [А-Яа-яЁёA-Za-z]+$')
+ADMIN_TOKEN = os.getenv('ADMIN', 'admin1_id,admin2_id').split(',')
 
 
 router = Router()
-
-
-class UserState(StatesGroup):
-    waiting_for_name = State()
-
-
-class TaskState(StatesGroup):
-    waiting_for_task_2_1_answer = State()
-    waiting_for_task_2_2_answer = State()
-    waiting_for_task_2_3_answer = State()
-    waiting_for_task_2_4_answer = State()
-    waiting_for_task_2_5_answer = State()
 
 
 def check_old_answer(text):
@@ -38,6 +38,365 @@ def check_old_answer(text):
             await callback.answer()
         return wrapper
     return decorator
+
+
+""" Admin handlers """
+
+
+@router.message(F.text == '/admin')
+async def admin_panel(message: Message):
+    if str(message.from_user.id) in ADMIN_TOKEN:
+        await message.answer(
+            admin_dict['admin_accept'],
+            reply_markup=kb.admin_keyboard
+        )
+    else:
+        await message.answer(
+            admin_dict['admin_denied']
+        )
+
+
+@router.callback_query(F.data == 'admin_add_user_cd')
+async def add_admin_callback(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_reply_markup(
+        reply_markup=None
+    )
+    await callback.message.answer(
+        admin_dict['admin_add_new_admin']
+    )
+    await state.set_state(AdminState.waiting_for_admin_id)
+
+
+@router.message(AdminState.waiting_for_admin_id)
+async def process_admin_id(message: Message, state: FSMContext):
+    new_admin_id = message.text.strip()
+    if new_admin_id.isdigit():
+
+        if len(new_admin_id) < 9 or len(new_admin_id) > 10:
+            await message.answer(
+                admin_dict['admin_length_alert'],
+                reply_markup=kb.admin_keyboard
+            )
+            return
+
+        new_admin_id = int(new_admin_id)
+
+        if str(new_admin_id) in ADMIN_TOKEN:
+            await message.answer(
+                admin_dict['admin_already_exists'].format(
+                    new_admin_id=new_admin_id
+                ),
+                reply_markup=kb.admin_keyboard
+            )
+        else:
+            with open('.env', 'a') as env_file:
+                env_file.write(f',{new_admin_id}')
+            ADMIN_TOKEN.append(str(new_admin_id))
+            await message.answer(
+                admin_dict['admin_succes_add_admin'].format(
+                    new_admin_id=new_admin_id
+                ),
+                reply_markup=kb.admin_keyboard
+            )
+    else:
+        await message.answer(
+            admin_dict['admin_add_alert'],
+            reply_markup=kb.admin_keyboard
+        )
+
+    await state.clear()
+
+
+@router.callback_query(F.data == 'admin_delete_user_cd')
+async def delete_admin_handler(callback: CallbackQuery):
+    admins_to_show = ADMIN_TOKEN[2:] if len(ADMIN_TOKEN) > 2 else []
+
+    if not admins_to_show:
+        await callback.message.edit_text(
+            admin_dict['admin_empty'],
+            reply_markup=kb.admin_keyboard
+        )
+        return
+
+    await callback.message.edit_text(
+        admin_dict['admin_delete_list'],
+        reply_markup=kb.get_delete_admin_keyboard(admins_to_show)
+    )
+
+
+@router.callback_query(F.data.startswith('delete_admin_'))
+async def confirm_delete_admin(callback: CallbackQuery):
+    admin_id_to_delete = callback.data.split("_")[-1]
+    await callback.message.edit_text(
+        admin_dict['admin_confirm'].format(
+            admin_id_to_delete=admin_id_to_delete
+        ),
+        reply_markup=kb.get_confirm_delete_keyboard(admin_id_to_delete)
+    )
+
+
+@router.callback_query(F.data.startswith('confirm_delete_'))
+async def execute_delete_admin(callback: CallbackQuery):
+    admin_id_to_delete = callback.data.split("_")[-1]
+    if admin_id_to_delete in ADMIN_TOKEN:
+        if len(ADMIN_TOKEN) > 2:
+            try:
+                config = dotenv_values('.env')
+                ADMIN_TOKEN.remove(admin_id_to_delete)
+                new_admins = ','.join(ADMIN_TOKEN)
+                config['ADMIN'] = new_admins
+
+                with open('.env', 'w') as f:
+                    for key, value in config.items():
+                        f.write(f'{key}={value}\n')
+                await callback.message.edit_text(
+                    admin_dict['admin_delete_accept'].format(
+                        admin_id_to_delete=admin_id_to_delete
+                    ),
+                    reply_markup=kb.admin_keyboard
+                    )
+            except Exception as e:
+                await callback.message.edit_text(
+                    f'{admin_dict['admin_alert']}{str(e)}',
+                    reply_markup=kb.admin_keyboard
+                    )
+        else:
+            await callback.message.edit_text(
+                admin_dict['admin_alert_delete_admin'],
+                reply_markup=kb.admin_keyboard
+                )
+    else:
+        await callback.message.edit_text(
+            admin_dict['admin_not_found'],
+            reply_markup=kb.admin_keyboard
+            )
+
+
+@router.callback_query(F.data == 'cancel_delete')
+async def cancel_delete(callback: CallbackQuery):
+    await callback.message.edit_text(
+        admin_dict['admin_accept'],
+        reply_markup=kb.admin_keyboard)
+
+
+@router.callback_query(F.data == 'admin_view_user_cd')
+async def handle_view_users(callback: CallbackQuery, state: FSMContext):
+    await state.update_data(offset=0)
+    await show_users_page(callback, state)
+
+
+async def show_users_page(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    offset = data.get('offset', 0)
+
+    users = await get_users_paginated(USERS_PER_PAGE, offset)
+
+    if not users:
+        await callback.message.edit_text(
+            admin_dict['admin_empty_users'],
+            reply_markup=kb.admin_keyboard
+        )
+        return
+
+    response = f'{admin_dict['admin_view_users']}\n\n'
+    for user in users:
+        user_id, class_name, full_name, completed_tasks = user
+        tasks = completed_tasks if completed_tasks else ' - '
+        response += (
+            f'├ ID: {user_id}\n'
+            f'├ Класс: {class_name}\n'
+            f'├ Имя: {full_name}\n'
+            f'└ Выполненные задания: {tasks}\n\n'
+        )
+
+    await callback.message.edit_text(
+        response,
+        reply_markup=kb.admin_pagination_keyboard
+    )
+
+
+@router.callback_query(F.data.in_(['prev_page', 'next_page']))
+async def handle_pagination(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    offset = data.get('offset', 0)
+
+    if callback.data == 'prev_page':
+        offset = max(0, offset - USERS_PER_PAGE)
+    elif callback.data == 'next_page':
+        offset += USERS_PER_PAGE
+
+    await state.update_data(offset=offset)
+    await show_users_page(callback, state)
+
+
+@router.callback_query(F.data == 'admin_export_users_cd')
+async def handle_export_users(callback: CallbackQuery):
+    try:
+        file_path = await export_users_to_excel()
+        file = FSInputFile(file_path, filename='users_export.xlsx')
+        await callback.message.answer_document(file)
+        await callback.answer(admin_dict['admin_export_accept'])
+    except Exception as e:
+        await callback.message.answer(f'{admin_dict['admin_alert']}{str(e)}')
+
+
+@router.callback_query(F.data == 'back_to_admin_cd')
+async def handle_back_to_admin(callback: CallbackQuery):
+    await callback.message.delete()
+    await callback.message.answer(
+        admin_dict['admin_accept'],
+        reply_markup=kb.admin_keyboard
+    )
+
+
+@router.callback_query(F.data == 'ask_admin')
+async def ask_admin_handler(callback: CallbackQuery, state: FSMContext):
+    await callback.message.answer(
+        admin_dict['admin_user_message'],
+        reply_markup=kb.admin_reply_to_admin
+        )
+
+    await state.set_state(FeedbackStates.waiting_for_user_message)
+
+
+@router.message(FeedbackStates.waiting_for_user_message)
+async def forward_to_admin(message: Message, state: FSMContext):
+    full_name = await get_user_full_name(message.from_user.id)
+    await state.update_data(message_text=message.text)
+
+    username = f'@{message.from_user.username}' \
+        if message.from_user.username else f'(ID: {message.from_user.id})'
+
+    reply_markup = kb.get_reply_keyboard(message.from_user.id)
+
+    for admin_id in ADMIN_TOKEN:
+        try:
+            await message.bot.send_message(
+                admin_id,
+                f'{admin_dict['admin_new_msg']}{full_name} '
+                f'{username}:\n{message.text}',
+                reply_markup=reply_markup
+            )
+        except Exception as e:
+            print(f'{admin_dict['admin_alert']}{e}')
+
+    await message.answer(
+        admin_dict['admin_answer_success']
+    )
+    await state.clear()
+
+
+@router.callback_query(F.data.startswith('reply_to_'))
+async def start_admin_reply(callback: CallbackQuery, state: FSMContext):
+    user_id = callback.data.split("_")[-1]
+    full_name = await get_user_full_name(user_id)
+    await state.update_data(target_user_id=user_id)
+    await callback.message.answer(
+        f'{admin_dict['admin_reply_to_user']} {full_name}:',
+        reply_markup=kb.reply_admin_markup
+        )
+    await state.set_state(FeedbackStates.waiting_for_admin_reply)
+
+
+@router.message(FeedbackStates.waiting_for_admin_reply)
+async def send_admin_reply(message: Message, state: FSMContext):
+    data = await state.get_data()
+    user_id = data.get('target_user_id')
+
+    try:
+        await message.bot.send_message(
+            user_id,
+            f'{admin_dict['admin_bot_reply']}\n\n{message.text}'
+        )
+        await message.answer(admin_dict['admin_answer_succes'])
+    except Exception as e:
+        await message.answer(f'{admin_dict['admin_alert']}{str(e)}')
+
+    await state.clear()
+
+
+@router.callback_query(F.data == 'cancel_feedback')
+async def cancel_feedback(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.message.delete()
+
+
+@router.callback_query(F.data == 'admin_start_spam_cd')
+async def start_spam(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_text(
+        text=admin_dict['admin_accept_spam'],
+        reply_markup=kb.admin_spam_keyboard
+    )
+    await state.set_state(FeedbackStates.waiting_for_spam_message)
+
+
+@router.message(F.content_type.in_({
+    ContentType.TEXT,
+    ContentType.PHOTO,
+    ContentType.VIDEO,
+    ContentType.VOICE,
+    ContentType.VIDEO_NOTE,
+    ContentType.DOCUMENT,
+    ContentType.AUDIO}), FeedbackStates.waiting_for_spam_message)
+async def handle_spam_message(message: Message, state: FSMContext):
+    user_ids = await get_user_ids()
+    await send_spam(message, user_ids)
+    await message.answer(
+        admin_dict['admin_spam_success']
+    )
+    await state.clear()
+    await message.answer(
+        admin_dict['admin_accept'],
+        reply_markup=kb.admin_keyboard
+    )
+
+
+async def send_spam(message: Message, user_ids: list[int]):
+    for user_id in user_ids:
+        try:
+            if message.content_type == ContentType.TEXT:
+                await message.bot.send_message(
+                    user_id,
+                    message.text
+                )
+            elif message.content_type == ContentType.PHOTO:
+                await message.bot.send_photo(
+                    user_id,
+                    message.photo[-1].file_id,
+                    caption=message.caption
+                )
+            elif message.content_type == ContentType.VIDEO:
+                await message.bot.send_video(
+                    user_id,
+                    message.video.file_id,
+                    caption=message.caption
+                )
+            elif message.content_type == ContentType.VOICE:
+                await message.bot.send_voice(
+                    user_id,
+                    message.voice.file_id
+                )
+            elif message.content_type == ContentType.VIDEO_NOTE:
+                await message.bot.send_video_note(
+                    user_id,
+                    message.video_note.file_id
+                )
+            elif message.content_type == ContentType.DOCUMENT:
+                await message.bot.send_document(
+                    user_id,
+                    message.document.file_id,
+                    caption=message.caption
+                )
+            elif message.content_type == ContentType.AUDIO:
+                await message.bot.send_audio(
+                    user_id,
+                    message.audio.file_id,
+                    caption=message.caption
+                )
+        except Exception as e:
+            print(f'{admin_dict['admin_alert']} {e}')
+
+""" Main menu handlers"""
 
 
 @router.message(F.text == '/start')
@@ -197,229 +556,180 @@ async def handle_back_to_task(callback: CallbackQuery):
     )
 
 
+""" Task Handlers """
+
+
 @router.callback_query(F.data == 'handle_task_2_cd')
-@check_old_answer('handle_task_2')
+@check_old_answer('handle_task_2_cd')
 async def handle_task_2(callback: CallbackQuery):
     video_link = 'https://rutube.ru/video/f8cdfddf0fa59963d92fde841bfde0fb/'
-    await callback.message.edit_text(
-        text=f'{dict['video_task_2']}\n{video_link}',
-        reply_markup=kb.back_to_task
+    await handle_task(
+        callback=callback,
+        state=None,
+        task_text=dict_task['video_task_2'],
+        reply_markup=kb.back_to_task_2,
+        video_link=video_link
     )
 
 
 @router.callback_query(F.data == 'into_task_2_cd')
 async def into_task_2(callback: CallbackQuery, state: FSMContext):
-    await state.set_state(TaskState.waiting_for_task_2_1_answer)
-
-    await state.update_data(last_message_id=callback.message.message_id)
-
-    await callback.message.edit_text(
-        text=dict['task_2_1'],
-        reply_markup=kb.back_task_2
+    await handle_task(
+        callback=callback,
+        state=state,
+        task_text=dict_task['task_2_1'],
+        reply_markup=kb.back_task_2,
+        next_state=TaskState.waiting_for_task_2_1_answer
     )
 
 
 @router.message(TaskState.waiting_for_task_2_1_answer)
 async def handle_task_2_1_answer(message: Message, state: FSMContext):
-    data = await state.get_data()
-    last_message_id = data.get('last_message_id')
-    error_messages = data.get('error_messages', [])
-
-    user_answer = message.text.strip().lower()
-    correct_words_2_1 = [
-        answer.lower() for answer in correct_answers['correct_answer_2_1']
-        ]
-
-    if user_answer in correct_words_2_1:
-        for msg_id in error_messages:
-            try:
-                await message.bot.delete_message(
-                    chat_id=message.chat.id,
-                    message_id=msg_id
-                )
-            except Exception as e:
-                print(f"Ошибка удаления сообщения {msg_id}: {e}")
-
-        await message.delete()
-
-        await message.bot.edit_message_text(
-            chat_id=message.chat.id,
-            message_id=last_message_id,
-            text=f'{dict['correct_msg']}\n{dict['task_2_2']}',
-            reply_markup=kb.back_task_2
-        )
-        await state.set_state(TaskState.waiting_for_task_2_2_answer)
-        await state.update_data(last_message_id=last_message_id,
-                                error_messages=[])
-    else:
-        await message.delete()
-        error_msg = await message.answer(
-            dict['error_msg']
-        )
-        error_messages.append(error_msg.message_id)
-        await state.update_data(error_messages=error_messages)
+    await handle_task_answer(
+        message=message,
+        state=state,
+        correct_answers_key='correct_answer_2_1',
+        next_task_text=dict_task['task_2_2'],
+        reply_markup=kb.back_task_2,
+        next_state=TaskState.waiting_for_task_2_2_answer
+    )
 
 
 @router.message(TaskState.waiting_for_task_2_2_answer)
 async def handle_task_2_2_answer(message: Message, state: FSMContext):
-    data = await state.get_data()
-    last_message_id = data.get('last_message_id')
-    error_messages = data.get('error_messages', [])
-
-    user_answer = message.text.strip().lower()
-    correct_words_2_2 = [
-        answer.lower() for answer in correct_answers['correct_answer_2_2']
-        ]
-
-    if user_answer in correct_words_2_2:
-        for msg_id in error_messages:
-            try:
-                await message.bot.delete_message(
-                    chat_id=message.chat.id,
-                    message_id=msg_id
-                )
-            except Exception as e:
-                print(f"Ошибка удаления сообщения {msg_id}: {e}")
-
-        await message.delete()
-
-        await message.bot.edit_message_text(
-            chat_id=message.chat.id,
-            message_id=last_message_id,
-            text=f'{dict['correct_msg']}\n{dict['task_2_3']}',
-            reply_markup=kb.back_task_2
-        )
-        await state.set_state(TaskState.waiting_for_task_2_3_answer)
-        await state.update_data(last_message_id=last_message_id,
-                                error_messages=[])
-    else:
-        await message.delete()
-        error_msg = await message.answer(
-            dict['error_msg']
-        )
-        error_messages.append(error_msg.message_id)
-        await state.update_data(error_messages=error_messages)
+    await handle_task_answer(
+        message=message,
+        state=state,
+        correct_answers_key='correct_answer_2_2',
+        next_task_text=dict_task['task_2_3'],
+        reply_markup=kb.back_task_2,
+        next_state=TaskState.waiting_for_task_2_3_answer
+    )
 
 
 @router.message(TaskState.waiting_for_task_2_3_answer)
 async def handle_task_2_3_answer(message: Message, state: FSMContext):
-    data = await state.get_data()
-    last_message_id = data.get('last_message_id')
-    error_messages = data.get('error_messages', [])
-
-    user_answer = message.text.strip().lower()
-    correct_words_2_3 = [
-        answer.lower() for answer in correct_answers['correct_answer_2_3']
-        ]
-
-    if user_answer in correct_words_2_3:
-        for msg_id in error_messages:
-            try:
-                await message.bot.delete_message(
-                    chat_id=message.chat.id,
-                    message_id=msg_id
-                )
-            except Exception as e:
-                print(f"Ошибка удаления сообщения {msg_id}: {e}")
-
-        await message.delete()
-
-        await message.bot.edit_message_text(
-            chat_id=message.chat.id,
-            message_id=last_message_id,
-            text=f'{dict['correct_msg']}\n{dict['task_2_4']}',
-            reply_markup=kb.back_task_2
-        )
-        await state.set_state(TaskState.waiting_for_task_2_4_answer)
-        await state.update_data(last_message_id=last_message_id,
-                                error_messages=[])
-    else:
-        await message.delete()
-        error_msg = await message.answer(
-            dict['error_msg']
-        )
-        error_messages.append(error_msg.message_id)
-        await state.update_data(error_messages=error_messages)
+    await handle_task_answer(
+        message=message,
+        state=state,
+        correct_answers_key='correct_answer_2_3',
+        next_task_text=dict_task['task_2_4'],
+        reply_markup=kb.back_task_2,
+        next_state=TaskState.waiting_for_task_2_4_answer
+    )
 
 
 @router.message(TaskState.waiting_for_task_2_4_answer)
 async def handle_task_2_4_answer(message: Message, state: FSMContext):
-    data = await state.get_data()
-    last_message_id = data.get('last_message_id')
-    error_messages = data.get('error_messages', [])
-
-    user_answer = message.text.strip().lower()
-    correct_words_2_4 = [
-        answer.lower() for answer in correct_answers['correct_answer_2_4']
-        ]
-
-    if user_answer in correct_words_2_4:
-        for msg_id in error_messages:
-            try:
-                await message.bot.delete_message(
-                    chat_id=message.chat.id,
-                    message_id=msg_id
-                )
-            except Exception as e:
-                print(f"Ошибка удаления сообщения {msg_id}: {e}")
-
-        await message.delete()
-
-        await message.bot.edit_message_text(
-            chat_id=message.chat.id,
-            message_id=last_message_id,
-            text=f'{dict['correct_msg']}\n{dict['task_2_5']}',
-            reply_markup=kb.back_task_2
-        )
-        await state.set_state(TaskState.waiting_for_task_2_5_answer)
-        await state.update_data(last_message_id=last_message_id,
-                                error_messages=[])
-    else:
-        await message.delete()
-        error_msg = await message.answer(
-            dict['error_msg']
-        )
-        error_messages.append(error_msg.message_id)
-        await state.update_data(error_messages=error_messages)
+    await handle_task_answer(
+        message=message,
+        state=state,
+        correct_answers_key='correct_answer_2_4',
+        next_task_text=dict_task['task_2_5'],
+        reply_markup=kb.back_task_2,
+        next_state=TaskState.waiting_for_task_2_5_answer
+    )
 
 
 @router.message(TaskState.waiting_for_task_2_5_answer)
 async def handle_task_2_5_answer(message: Message, state: FSMContext):
-    data = await state.get_data()
-    last_message_id = data.get('last_message_id')
-    error_messages = data.get('error_messages', [])
+    await handle_task_answer(
+        message=message,
+        state=state,
+        correct_answers_key='correct_answer_2_5',
+        next_task_text='',
+        next_state=None,
+        reply_markup=kb.task_2_done,
+        final_step=True,
+        task_number=2
+    )
 
-    user_answer = message.text.strip().lower()
-    correct_words_2_5 = [
-        answer.lower() for answer in correct_answers['correct_answer_2_5']
-        ]
 
-    if user_answer in correct_words_2_5:
-        for msg_id in error_messages:
-            try:
-                await message.bot.delete_message(
-                    chat_id=message.chat.id,
-                    message_id=msg_id
-                )
-            except Exception as e:
-                print(f"Ошибка удаления сообщения {msg_id}: {e}")
+@router.callback_query(F.data == 'handle_task_3_cd')
+@check_old_answer('handle_task_3_cd')
+async def handle_task_3(callback: CallbackQuery):
+    await handle_task(
+        callback=callback,
+        state=None,
+        task_text=dict_task['task_3'],
+        reply_markup=kb.back_to_task_3,
+        parse_mode='HTML'
+    )
 
-        await message.delete()
 
-        await message.bot.edit_message_text(
-            chat_id=message.chat.id,
-            message_id=last_message_id,
-            text=dict['correct_msg'],
-            reply_markup=kb.task_2_done
-        )
-        user_id = message.from_user.id
-        await update_completed_tasks(user_id, 2)
+@router.callback_query(F.data == 'into_task_3_cd')
+async def into_task_3(callback: CallbackQuery, state: FSMContext):
+    await handle_task(
+        callback=callback,
+        state=state,
+        task_text=dict_task['task_3_1'],
+        reply_markup=kb.back_to_task_3,
+        next_state=TaskState.waiting_for_task_3_1_answer,
+        parse_mode='HTML'
+    )
 
-        await state.clear()
-    else:
-        await message.delete()
-        error_msg = await message.answer(
-            dict['error_msg']
-        )
-        error_messages.append(error_msg.message_id)
-        await state.update_data(error_messages=error_messages)
+
+@router.message(TaskState.waiting_for_task_3_1_answer)
+async def handle_task_3_1_answer(message: Message, state: FSMContext):
+    await handle_task_answer(
+        message=message,
+        state=state,
+        correct_answers_key='correct_answer_3_1',
+        next_task_text=dict_task['task_3_2'],
+        parse_mode='HTML',
+        reply_markup=kb.back_task_3,
+        next_state=TaskState.waiting_for_task_3_2_answer
+    )
+
+
+@router.message(TaskState.waiting_for_task_3_2_answer)
+async def handle_task_3_2_answer(message: Message, state: FSMContext):
+    await handle_task_answer(
+        message=message,
+        state=state,
+        correct_answers_key='correct_answer_3_2',
+        next_task_text=dict_task['task_3_3'],
+        parse_mode='HTML',
+        reply_markup=kb.back_task_3,
+        next_state=TaskState.waiting_for_task_3_3_answer
+    )
+
+
+@router.message(TaskState.waiting_for_task_3_3_answer)
+async def handle_task_3_3_answer(message: Message, state: FSMContext):
+    await handle_task_answer(
+        message=message,
+        state=state,
+        correct_answers_key='correct_answer_3_3',
+        next_task_text=dict_task['task_3_4'],
+        parse_mode='HTML',
+        reply_markup=kb.back_task_3,
+        next_state=TaskState.waiting_for_task_3_4_answer
+    )
+
+
+@router.message(TaskState.waiting_for_task_3_4_answer)
+async def handle_task_3_4_answer(message: Message, state: FSMContext):
+    await handle_task_answer(
+        message=message,
+        state=state,
+        correct_answers_key='correct_answer_3_4',
+        next_task_text=dict_task['task_3_5'],
+        parse_mode='HTML',
+        reply_markup=kb.back_task_3,
+        next_state=TaskState.waiting_for_task_3_5_answer
+    )
+
+
+@router.message(TaskState.waiting_for_task_3_5_answer)
+async def handle_task_3_5_answer(message: Message, state: FSMContext):
+    await handle_task_answer(
+        message=message,
+        state=state,
+        correct_answers_key='correct_answer_3_5',
+        next_task_text='',
+        next_state=None,
+        reply_markup=kb.task_3_done,
+        final_step=True,
+        task_number=3
+    )
