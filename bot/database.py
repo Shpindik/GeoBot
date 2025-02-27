@@ -77,15 +77,14 @@ async def update_completed_tasks(user_id: int, task_number: int):
                 conn.commit()
 
 
-async def get_users_paginated(limit: int, offset: int):
+async def get_users():
     """ Get users from database """
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute('''
             SELECT user_id, class_name, full_name, completed_tasks
             FROM users
-            LIMIT ? OFFSET ?
-        ''', (limit, offset))
+        ''',)
         return cursor.fetchall()
 
 

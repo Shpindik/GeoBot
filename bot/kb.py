@@ -78,14 +78,8 @@ def get_confirm_delete_keyboard(admin_id_to_delete):
     )
 
 
-admin_pagination_keyboard = InlineKeyboardMarkup(
+admin_show_user_keyboard = InlineKeyboardMarkup(
     inline_keyboard=[
-        [
-            InlineKeyboardButton(text=admin_dict['admin_back'],
-                                 callback_data='prev_page'),
-            InlineKeyboardButton(text=admin_dict['admin_next'],
-                                 callback_data='next_page')
-        ],
         [
             InlineKeyboardButton(text=admin_dict['admin_export_users'],
                                  callback_data='admin_export_users_cd')
@@ -158,10 +152,6 @@ main_menu = InlineKeyboardMarkup(
             InlineKeyboardButton(
                 text=dict['about_button'], callback_data='about_cd')
         ],
-        [
-            InlineKeyboardButton(
-                text='спросить админа', callback_data='ask_admin_cd')
-        ]
     ]
 )
 
@@ -209,6 +199,17 @@ chose_task = InlineKeyboardMarkup(
     ]
 )
 
+accept_and_back = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text=dict['back_task_list'],
+                callback_data='chose_task_cd'
+            )
+        ]
+    ]
+)
+
 choosing_task = InlineKeyboardMarkup(
     inline_keyboard=[
         [
@@ -236,6 +237,12 @@ def create_task_done_keyboard(task_callback_data: str) -> InlineKeyboardMarkup:
                 InlineKeyboardButton(
                     text=dict['back_task_list'],
                     callback_data='back_to_task_cd'
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=dict['ask_to_admin'],
+                    callback_data='ask_admin_cd'
                 )
             ]
         ]

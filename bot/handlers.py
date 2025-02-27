@@ -6,9 +6,8 @@ import kb
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, ContentType, FSInputFile, Message
-from const import USERS_PER_PAGE
 from database import (export_users_to_excel, get_user_full_name, get_user_ids,
-                      get_users_paginated, save_user_data)
+                      get_users, save_user_data)
 from dict import ADMIN_DICT as admin_dict
 from dict import TASK_DICT as dict_task
 from dict import TEXT_DICT as dict
@@ -177,15 +176,12 @@ async def cancel_delete(callback: CallbackQuery):
 
 @router.callback_query(F.data == 'admin_view_user_cd')
 async def handle_view_users(callback: CallbackQuery, state: FSMContext):
-    await state.update_data(offset=0)
+    await state.update_data()
     await show_users_page(callback, state)
 
 
 async def show_users_page(callback: CallbackQuery, state: FSMContext):
-    data = await state.get_data()
-    offset = data.get('offset', 0)
-
-    users = await get_users_paginated(USERS_PER_PAGE, offset)
+    users = await get_users()
 
     if not users:
         await callback.message.edit_text(
@@ -207,22 +203,8 @@ async def show_users_page(callback: CallbackQuery, state: FSMContext):
 
     await callback.message.edit_text(
         response,
-        reply_markup=kb.admin_pagination_keyboard
+        reply_markup=kb.admin_show_user_keyboard
     )
-
-
-@router.callback_query(F.data.in_(['prev_page', 'next_page']))
-async def handle_pagination(callback: CallbackQuery, state: FSMContext):
-    data = await state.get_data()
-    offset = data.get('offset', 0)
-
-    if callback.data == 'prev_page':
-        offset = max(0, offset - USERS_PER_PAGE)
-    elif callback.data == 'next_page':
-        offset += USERS_PER_PAGE
-
-    await state.update_data(offset=offset)
-    await show_users_page(callback, state)
 
 
 @router.callback_query(F.data == 'admin_export_users_cd')
@@ -247,10 +229,14 @@ async def handle_back_to_admin(callback: CallbackQuery):
 
 @router.callback_query(F.data == 'ask_admin_cd')
 async def ask_admin_handler(callback: CallbackQuery, state: FSMContext):
-    await callback.message.answer(
+    msg = await callback.message.answer(
         admin_dict['admin_user_message'],
         reply_markup=kb.admin_reply_to_admin
         )
+    await state.update_data(
+        bot_message_id=msg.message_id,
+        user_message_id=callback.message.message_id
+    )
 
     await state.set_state(FeedbackStates.waiting_for_user_message)
 
@@ -276,8 +262,22 @@ async def forward_to_admin(message: Message, state: FSMContext):
         except Exception as e:
             print(f'{admin_dict['admin_alert']}{e}')
 
+    data = await state.get_data()
+    bot_message_id = data.get('bot_message_id')
+    user_message_id = data.get('user_message_id')
+
+    try:
+        await message.bot.delete_message(message.chat.id, message.message_id)
+        if bot_message_id:
+            await message.bot.delete_message(message.chat.id, bot_message_id)
+        if user_message_id:
+            await message.bot.delete_message(message.chat.id, user_message_id)
+    except Exception as e:
+        print(f"Ошибка при удалении сообщений: {e}")
+
     await message.answer(
-        admin_dict['admin_answer_success']
+        admin_dict['admin_answer_success'],
+        reply_markup=kb.accept_and_back
     )
     await state.clear()
 
@@ -294,19 +294,63 @@ async def start_admin_reply(callback: CallbackQuery, state: FSMContext):
     await state.set_state(FeedbackStates.waiting_for_admin_reply)
 
 
-@router.message(FeedbackStates.waiting_for_admin_reply)
+@router.message(
+    FeedbackStates.waiting_for_admin_reply,
+    F.text | F.photo | F.video | F.voice | F.video_note | F.document
+)
 async def send_admin_reply(message: Message, state: FSMContext):
     data = await state.get_data()
     user_id = data.get('target_user_id')
+    full_name = await get_user_full_name(user_id)
+
+    caption_text = (
+        f"{admin_dict['admin_bot_reply']}\n\n{message.caption or ''}"
+    ).strip()
 
     try:
-        await message.bot.send_message(
-            user_id,
-            f'{admin_dict['admin_bot_reply']}\n\n{message.text}'
+        if message.text:
+            await message.bot.send_message(
+                user_id,
+                f"{admin_dict['admin_bot_reply']}\n\n{message.text}"
+            )
+        elif message.photo:
+            await message.bot.send_photo(
+                user_id,
+                message.photo[-1].file_id,
+                caption=caption_text
+            )
+        elif message.video:
+            await message.bot.send_video(
+                user_id,
+                message.video.file_id,
+                caption=caption_text
+            )
+        elif message.voice:
+            await message.bot.send_voice(
+                user_id,
+                message.voice.file_id
+            )
+            if message.caption:
+                await message.bot.send_message(user_id, caption_text)
+        elif message.video_note:
+            await message.bot.send_video_note(
+                user_id,
+                message.video_note.file_id
+            )
+            if message.caption:
+                await message.bot.send_message(user_id, caption_text)
+        elif message.document:
+            await message.bot.send_document(
+                user_id,
+                message.document.file_id,
+                caption=caption_text
+            )
+
+        await message.answer(
+            f"{admin_dict['admin_answer_success_to_user']} {full_name}"
         )
-        await message.answer(admin_dict['admin_answer_success'])
     except Exception as e:
-        await message.answer(f'{admin_dict['admin_alert']}{str(e)}')
+        await message.answer(f"{admin_dict['admin_alert']}{str(e)}")
 
     await state.clear()
 
@@ -665,7 +709,7 @@ async def into_task_3(callback: CallbackQuery, state: FSMContext):
         callback=callback,
         state=state,
         task_text=dict_task['task_3_1'],
-        reply_markup=kb.back_to_task_3,
+        reply_markup=kb.back_task_3,
         next_state=TaskState.waiting_for_task_3_1_answer,
         parse_mode='HTML'
     )
