@@ -36,3 +36,8 @@ class TaskState(StatesGroup):
     waiting_for_task_6_3_answer = State()
     waiting_for_task_6_4_answer = State()
     waiting_for_task_6_5_answer = State()
+    waiting_for_task_8_1_answer = State()
+    waiting_for_task_8_2_answer = State()
+    waiting_for_task_8_3_answer = State()
+    waiting_for_task_8_4_answer = State()
+    waiting_for_task_8_5_answer = State()

@@ -55,38 +55,35 @@ async def handle_task(
     if video_link:
         final_text += f'\n\n📹 Видео: {video_link}'
 
-    try:
-        if image_filename:
-            media_path = os.path.join(MEDIA_DIR, image_filename)
-            if os.path.exists(media_path):
-                photo = FSInputFile(media_path)
-                new_message = await callback.message.answer_photo(
-                    photo=photo,
-                    caption=final_text,
-                    reply_markup=reply_markup,
-                    parse_mode=parse_mode
-                )
-            else:
-                new_message = await callback.message.answer(
-                    text=f'❌ Ошибка: Файл {image_filename} не найден.\
-                        \n{task_text}',
-                    reply_markup=reply_markup,
-                    parse_mode=parse_mode
-                )
-        else:
-            new_message = await callback.message.answer(
-                text=final_text,
+    if image_filename:
+        media_path = os.path.join(MEDIA_DIR, image_filename)
+        if os.path.exists(media_path):
+            photo = FSInputFile(media_path)
+            new_message = await callback.message.answer_photo(
+                photo=photo,
+                caption=final_text,
                 reply_markup=reply_markup,
                 parse_mode=parse_mode
             )
+        else:
+            new_message = await callback.message.answer(
+                text=f'❌ Ошибка: Файл {image_filename} не найден.\
+                    \n{task_text}',
+                reply_markup=reply_markup,
+                parse_mode=parse_mode
+            )
+    else:
+        new_message = await callback.message.answer(
+            text=final_text,
+            reply_markup=reply_markup,
+            parse_mode=parse_mode
+        )
 
-        if next_state:
-            await state.set_state(next_state)
+    if next_state:
+        await state.set_state(next_state)
 
+    if state:
         await state.update_data(last_message_id=new_message.message_id)
-
-    except Exception as e:
-        print(f'Ошибка отправки сообщения: {e}')
 
 
 async def handle_task_answer(
