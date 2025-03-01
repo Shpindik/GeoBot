@@ -249,11 +249,32 @@ def create_task_done_keyboard(task_callback_data: str) -> InlineKeyboardMarkup:
     )
 
 
-task_2_done = create_task_done_keyboard(task_callback_data='handle_task_2_cd')
-task_3_done = create_task_done_keyboard(task_callback_data='handle_task_3_cd')
-task_5_done = create_task_done_keyboard(task_callback_data='handle_task_5_cd')
-task_6_done = create_task_done_keyboard(task_callback_data='handle_task_6_cd')
-task_8_done = create_task_done_keyboard(task_callback_data='handle_task_8_cd')
+task_2_done = create_task_done_keyboard(
+    task_callback_data='handle_task_2_cd')
+task_3_done = create_task_done_keyboard(
+    task_callback_data='handle_task_3_cd')
+task_5_done = create_task_done_keyboard(
+    task_callback_data='handle_task_5_cd')
+task_6_done = create_task_done_keyboard(
+    task_callback_data='handle_task_6_cd')
+task_8_done = create_task_done_keyboard(
+    task_callback_data='handle_task_8_cd')
+task_10_done = create_task_done_keyboard(
+    task_callback_data='handle_task_10_cd')
+task_11_done = create_task_done_keyboard(
+    task_callback_data='handle_task_11_cd')
+task_15_done = create_task_done_keyboard(
+    task_callback_data='handle_task_15_cd')
+task_19_done = create_task_done_keyboard(
+    task_callback_data='handle_task_19_cd')
+task_22_done = create_task_done_keyboard(
+    task_callback_data='handle_task_22_cd')
+task_24_done = create_task_done_keyboard(
+    task_callback_data='handle_task_24_cd')
+task_25_done = create_task_done_keyboard(
+    task_callback_data='handle_task_25_cd')
+task_26_done = create_task_done_keyboard(
+    task_callback_data='handle_task_26_cd')
 
 
 def create_back_task_keyboard(task_number: int) -> InlineKeyboardMarkup:
@@ -274,6 +295,14 @@ back_task_3 = create_back_task_keyboard(task_number=3)
 back_task_5 = create_back_task_keyboard(task_number=5)
 back_task_6 = create_back_task_keyboard(task_number=6)
 back_task_8 = create_back_task_keyboard(task_number=8)
+back_task_10 = create_back_task_keyboard(task_number=10)
+back_task_11 = create_back_task_keyboard(task_number=11)
+back_task_15 = create_back_task_keyboard(task_number=15)
+back_task_19 = create_back_task_keyboard(task_number=19)
+back_task_22 = create_back_task_keyboard(task_number=22)
+back_task_24 = create_back_task_keyboard(task_number=24)
+back_task_25 = create_back_task_keyboard(task_number=25)
+back_task_26 = create_back_task_keyboard(task_number=26)
 
 
 def create_back_to_task_keyboard(task_number: int) -> InlineKeyboardMarkup:
@@ -317,3 +346,11 @@ back_to_task_9 = InlineKeyboardMarkup(
 
     ]
 )
+back_to_task_10 = create_back_to_task_keyboard(task_number=10)
+back_to_task_11 = create_back_to_task_keyboard(task_number=11)
+back_to_task_15 = create_back_to_task_keyboard(task_number=15)
+back_to_task_19 = create_back_to_task_keyboard(task_number=19)
+back_to_task_22 = create_back_to_task_keyboard(task_number=22)
+back_to_task_24 = create_back_to_task_keyboard(task_number=24)
+back_to_task_25 = create_back_to_task_keyboard(task_number=25)
+back_to_task_26 = create_back_to_task_keyboard(task_number=26)

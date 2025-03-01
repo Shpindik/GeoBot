@@ -89,9 +89,9 @@ async def handle_task(
 async def handle_task_answer(
     message: Message,
     state: FSMContext,
-    correct_answers_key: str,
     next_task_text: str,
     next_state: TaskState,
+    correct_answers_key: str = None,
     reply_markup: str = None,
     parse_mode: Optional[str] = None,
     image_filename: Optional[str] = None,
