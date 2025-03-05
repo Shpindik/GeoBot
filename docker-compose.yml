@@ -1,0 +1,13 @@
+services:
+  bot:
+    build: .
+    container_name: geobot
+    command: python main.py
+    ports: 
+      - "80:80"
+    restart: always
+    env_file:
+      - bot/.env
+    volumes:
+      - ./bot:/bot
+      - ./logs:/logs

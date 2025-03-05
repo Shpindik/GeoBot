@@ -88,14 +88,14 @@ TEXT_DICT = frozendict({
 })
 
 VIDEO_LINKS = frozendict({
-    'video_2': 'https://rutube.ru/video/f8cdfddf0fa59963d92fde841bfde0fb/',
-    'video_5': 'https://rutube.ru/video/854ce20ade387f87041ca1e29e002448/',
-    'video_6': 'https://rutube.ru/video/854ce20ade387f87041ca1e29e002448/',
-    'video_9': 'https://rutube.ru/video/854ce20ade387f87041ca1e29e002448/',
-    'video_10': 'https://rutube.ru/video/854ce20ade387f87041ca1e29e002448/',
-    'video_11': 'https://rutube.ru/video/854ce20ade387f87041ca1e29e002448/',
-    'video_25': 'https://rutube.ru/video/854ce20ade387f87041ca1e29e002448/',
-    'video_26': 'https://rutube.ru/video/854ce20ade387f87041ca1e29e002448/',
+    'video_2': 'https://rutube.ru/video/private/a225ba59c334e89863d9a194e06e1ddb/?p=fNl8hjk-KPtksxFnQTzGvQ',
+    'video_5': 'https://rutube.ru/video/private/a2febd410255827655c80023f3157701/?p=RxU3rIudab47x8cQIYuPLw',
+    'video_6': 'https://rutube.ru/video/private/a9dac5c3797e6103460b7f2ef325e0eb/?p=_9b3pdV8eijDESlh0tj-Iw',
+    'video_9': 'https://rutube.ru/video/private/ed156bc0f3182610ca28d76ec3447529/?p=0A-GvuIomu61J_LfgDzvng',
+    'video_10': 'https://rutube.ru/video/private/245283d8b77eb1960339ec4ee3cedb8f/?p=4dZ0JX60yI2U_9khvQUsFg',
+    'video_11': 'https://rutube.ru/video/private/b75c59b44f64a2aad63fa0352abbf790/?p=LigIvtFpovOBwFKL86c4vw',
+    'video_25': 'https://rutube.ru/video/private/62c3cf781cef24a6e1b865618ce9d590/?p=RgXxvsZwg7QUZJEVGcde_Q',
+    'video_26': 'https://rutube.ru/video/private/899707edcb1437427c57df6c487884a5/?p=M2TtpjoZEa6QcFoHnbco_Q',
 
 })
 
