@@ -140,5 +140,5 @@ cython_debug/
 *.xls
 *.xlsx
 
-# Backups 
-*.bac
+# Backups database
+*.db.bac
